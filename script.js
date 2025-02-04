@@ -4,36 +4,42 @@ function extractTitle() {
   const url = urlInput.value.trim();
 
   try {
-    // Extract video ID from different YouTube URL formats
-    const videoIdMatch = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-                
+    // Extract video ID from various YouTube URL formats
+    const videoIdMatch = url.match(
+      /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
+    );
     if (!videoIdMatch) {
       throw new Error('Invalid YouTube URL');
     }
-
     const videoId = videoIdMatch[1];
-    const embedUrl = `https://www.youtube.com/embed/${videoId}`;
 
-    // Create an iframe to fetch title
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = embedUrl;
-                
-    iframe.onload = function() {
-      try {
-        const title = iframe.contentDocument.title;
-        resultDiv.textContent = title || 'Title not found';
-        document.body.removeChild(iframe);
-      } catch (error) {
-        resultDiv.textContent = 'Unable to extract title (Cross-Origin restrictions)';
-      }
-    };
+    // Using the YouTube Data API v3 to fetch video details avoids cross-origin issues.
+    // Replace 'YOUR_YOUTUBE_API_KEY' with your actual API key.
+    const apiKey = 'YOUR_YOUTUBE_API_KEY';
+    if (apiKey === 'YOUR_YOUTUBE_API_KEY') {
+      resultDiv.textContent = 'You must provide a valid YouTube API key in the code.';
+      return;
+    }
+    const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`;
 
-    iframe.onerror = function() {
-      resultDiv.textContent = 'Error extracting title';
-    };
-
-    document.body.appendChild(iframe);
+    fetch(apiUrl)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`API request error: ${response.statusText}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.items && data.items.length > 0) {
+          const title = data.items[0].snippet.title;
+          resultDiv.textContent = title || 'Title not found';
+        } else {
+          resultDiv.textContent = 'Video not found';
+        }
+      })
+      .catch(error => {
+        resultDiv.textContent = `Error: ${error.message}`;
+      });
   } catch (error) {
     resultDiv.textContent = error.message;
   }
